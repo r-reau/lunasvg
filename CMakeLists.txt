@@ -8,11 +8,18 @@ set(CMAKE_C_STANDARD 11)
 option(BUILD_SHARED_LIBS "Build as a shared library" OFF)
 option(LUNASVG_BUILD_EXAMPLES "Build example(s)" OFF)
 
+# Find FreeType
+find_package(Freetype REQUIRED)
+include_directories(${FREETYPE_INCLUDE_DIRS})
+
 add_library(lunasvg)
 
 add_subdirectory(include)
 add_subdirectory(source)
 add_subdirectory(3rdparty/plutovg)
+
+# Link against FreeType
+target_link_libraries(lunasvg PRIVATE ${FREETYPE_LIBRARIES})
 
 if(BUILD_SHARED_LIBS)
     target_compile_definitions(lunasvg PUBLIC LUNASVG_SHARED)

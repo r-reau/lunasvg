@@ -31,7 +31,8 @@ enum class ElementID {
     Style,
     Svg,
     Symbol,
-    Use
+    Use,
+    Text
 };
 
 enum class PropertyID {
@@ -101,7 +102,8 @@ enum class PropertyID {
     X2,
     Y,
     Y1,
-    Y2
+    Y2,
+    Text,
 };
 
 struct Property {

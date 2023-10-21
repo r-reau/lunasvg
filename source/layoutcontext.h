@@ -20,7 +20,8 @@ enum class LayoutId {
     LinearGradient,
     RadialGradient,
     Pattern,
-    SolidColor
+    SolidColor,
+    Text
 };
 
 class RenderState;
@@ -209,6 +210,35 @@ public:
 
 public:
     Color color;
+};
+
+class LayoutText : public LayoutContainer {
+public:
+    LayoutText();
+
+    void render(RenderState& state) const;
+
+public:
+    double x;
+    double y;
+    std::string text;
+    /*double dx;
+    double dy;
+    double rotate;
+    TextAnchor anchor;
+    double letterSpacing;
+    double wordSpacing;
+    double fontSize;
+    double kerning;
+    double lineHeight;
+    double baselineShift;
+    FontData fontData;
+    TextDirection direction;
+    TextDecoration decoration;
+    Color color;
+    double opacity;
+    const LayoutMask* masker;
+    const LayoutClipPath* clipper;*/
 };
 
 class FillData {

@@ -14,6 +14,9 @@
 #include "symbolelement.h"
 #include "useelement.h"
 #include "styleelement.h"
+#include "textelement.h"
+
+#include <iostream>
 
 namespace lunasvg {
 
@@ -1000,7 +1003,8 @@ static inline ElementID elementid(const std::string& name)
         {"solidColor", ElementID::SolidColor},
         {"svg", ElementID::Svg},
         {"symbol", ElementID::Symbol},
-        {"use", ElementID::Use}
+        {"use", ElementID::Use},
+        {"text", ElementID::Text}
     };
 
     auto it = elementmap.find(name);
@@ -1617,6 +1621,8 @@ static inline std::unique_ptr<Element> createElement(ElementID id)
         return makeUnique<MarkerElement>();
     case ElementID::Style:
         return makeUnique<StyleElement>();
+    case ElementID::Text:
+        return makeUnique<TextElement>();
     default:
         break;
     }
@@ -1745,7 +1751,7 @@ bool TreeBuilder::parse(const char* data, std::size_t size)
     std::string value;
     int ignoring = 0;
     auto handleText = [&](const char* start, const char* end, bool in_cdata) {
-        if(ignoring > 0 || current == nullptr || current->id != ElementID::Style)
+        if(ignoring > 0 || current == nullptr || (current->id != ElementID::Style && current->id != ElementID::Text))
             return;
 
         if(in_cdata)
@@ -1753,8 +1759,12 @@ bool TreeBuilder::parse(const char* data, std::size_t size)
         else
             decodeText(start, end, value);
 
-        removeComments(value);
-        styleSheet.parse(value);
+        if(current->id == ElementID::Style) {
+            removeComments(value);
+            styleSheet.parse(value);
+        } else if(current->id == ElementID::Text) {
+            current->set(PropertyID::Text, value, 0X0);
+        }
     };
 
     while(ptr < end) {

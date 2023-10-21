@@ -47,6 +47,7 @@ public:
     void stroke(const Path& path, const Transform& transform, double width, LineCap cap, LineJoin join, double miterlimit, const DashData& dash, BlendMode mode, double opacity);
     void blend(const Canvas* source, BlendMode mode, double opacity);
     void mask(const Rect& clip, const Transform& transform);
+    void text(const double x, const double y, const std::string text);
 
     void luminance();
 

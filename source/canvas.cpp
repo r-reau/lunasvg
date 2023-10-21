@@ -2,6 +2,14 @@
 
 #include <cmath>
 
+#include <ft2build.h>
+#include FT_FREETYPE_H
+
+#include <locale>
+#include <codecvt>
+
+#include <iostream>
+
 namespace lunasvg {
 
 static plutovg_matrix_t to_plutovg_matrix(const Transform& transform);
@@ -141,6 +149,157 @@ void Canvas::mask(const Rect& clip, const Transform& transform)
     plutovg_set_opacity(pluto, 0.0);
     plutovg_set_matrix(pluto, &translation);
     plutovg_fill(pluto);
+}
+
+void draw_bitmap(unsigned char **canvas, int width, int height, FT_Bitmap *bitmap, FT_Int x, FT_Int y) {
+    FT_Int i, j, p, q;
+    FT_Int x_max = x + bitmap->width;
+    FT_Int y_max = y + bitmap->rows;
+
+    for (i = x, p = 0; i < x_max; i++, p++) {
+        for (j = y, q = 0; j < y_max; j++, q++) {
+            if (i < 0 || j < 0 || i >= width || j >= height)
+                continue;
+
+            canvas[j][i] |= bitmap->buffer[q * bitmap->width + p];
+        }
+    }
+}
+
+void show_image(unsigned char** canvas, int width, int height) {
+    int i, j;
+
+    for (i = 0; i < height; i++) {
+        for (j = 0; j < width; j++)
+            putchar(canvas[i][j] == 0 ? ' ' : canvas[i][j] < 128 ? '+' : '*');
+        putchar('\n');
+    }
+}
+
+void Canvas::text(const double x, const double y, const std::string text)
+{
+    //TODO TRANSFORME VALUES FOR RESOLUTIONS
+    auto width = plutovg_surface_get_width(surface);
+    auto height = plutovg_surface_get_height(surface);
+    auto data = plutovg_surface_get_data(surface);
+
+    auto stride = plutovg_surface_get_stride(surface);
+    std::cout << "Stride : " << stride << std::endl;
+
+    std::cout << "X : " << x << std::endl;
+    std::cout << "Y : " << y << std::endl;
+    std::cout << "Text : " << text << std::endl;
+
+    //std::cout << "Width : " << width << std::endl;
+    //std::cout << "Height : " << height << std::endl;
+
+    FT_Error error;
+    FT_Library library;
+    FT_Face face;
+    FT_GlyphSlot slot;
+
+    const int FONT_SIZE = 12;
+
+    const char *filename = "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf";
+
+    error = FT_Init_FreeType(&library);
+    if (error) {
+        std::cout << "Error of FT_Init_FreeType : " << error << std::endl;
+        exit(1);
+    }
+    error = FT_New_Face(library, filename, 0, &face);
+    if (error) {
+        std::cout << "Error of FT_New_Face : " << error << std::endl;
+        exit(1);
+    }
+    error = FT_Set_Char_Size(face, FONT_SIZE * 64, 0, 100, 0);
+    if (error) {
+        std::cout << "Error of FT_Set_Char_Size : " << error << std::endl;
+        exit(1);
+    }
+
+    // Convert std::string to std::wstring
+    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+    std::wstring myWString = converter.from_bytes(text);
+
+    const int num_chars = myWString.size();
+
+    std::cout << "Number of chars : " << num_chars << std::endl;
+
+    // Display the result
+    for(int i = 0; i < myWString.size(); i++) {
+        std::cout << "Char start : " << myWString[i] << std::endl;
+    }
+
+    slot = face->glyph;
+
+    int total_width = 0;
+    int max_height =  0;
+
+    for (int n = 0; n < num_chars; n++) {
+        error = FT_Load_Char(face, myWString[n], FT_LOAD_RENDER);
+        if (error) {
+            std::cout << "Error of FT_Load_Char : " << error << std::endl;
+            exit(1);
+        }
+
+        total_width += slot->advance.x >> 6;
+
+        if(slot->bitmap.rows > (unsigned int) max_height)
+            max_height = slot->bitmap.rows;
+    }
+
+    int width_canvas = total_width;
+    int height_canvas = max_height;
+
+    std::cout << "Width canvas : " << width_canvas << std::endl;
+    std::cout << "Height canvas : " << height_canvas << std::endl;
+
+    // Allocate memory for the image array
+    unsigned char **text_canvas = (unsigned char **)malloc(height_canvas * sizeof(unsigned char *));
+    for (int i = 0; i < height_canvas; i++)
+        text_canvas[i] = (unsigned char *)calloc(width_canvas, sizeof(unsigned char));
+
+    int pen_x = 0;
+    int pen_y = max_height;
+
+    for (int n = 0; n < num_chars; n++) {
+        error = FT_Load_Char(face, myWString[n], FT_LOAD_RENDER);
+        if (error) {
+            std::cout << "Error of FT_Load_Char : " << error << std::endl;
+            exit(1);
+        }
+        draw_bitmap(text_canvas, width_canvas, height_canvas, &slot->bitmap, pen_x + slot->bitmap_left, pen_y - slot->bitmap_top);
+        pen_x += slot->advance.x >> 6;
+    }
+
+    //TODO OVERFLOW BORDER, FIX THIS
+    show_image(text_canvas, width_canvas, height_canvas);
+
+    int round_x = (int)round(x);
+    int round_y = (int)round(y) - 12;
+
+    for (int i = 0; i < height_canvas; i++) {
+        for(int j = 0; j < width_canvas; j++) {
+            if (text_canvas[i][j] == 0 || (i + round_y) < 0 || (i + round_y) >= height || (j + round_x) < 0 || (j + round_x) >= width)
+                continue;
+
+
+            int index = ((i + round_y) * width + (j + round_x)) * 4;
+            data[index] = 255 - text_canvas[i][j];
+            data[index + 1] = 255 - text_canvas[i][j];
+            data[index + 2] = 255 - text_canvas[i][j];
+            data[index + 3] = 255;
+        }
+    }
+
+    // Delete the array created
+    for (int i = 0; i < height_canvas; i++)                       // arrays
+        free(text_canvas[i]);
+    free(text_canvas);
+
+    FT_Done_Face(face);
+    FT_Done_FreeType(library);
 }
 
 void Canvas::luminance()

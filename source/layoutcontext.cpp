@@ -7,6 +7,8 @@
 #include "markerelement.h"
 #include "geometryelement.h"
 
+#include <iostream>
+
 #include <cmath>
 
 namespace lunasvg {
@@ -305,6 +307,22 @@ LayoutSolidColor::LayoutSolidColor()
 void LayoutSolidColor::apply(RenderState& state) const
 {
     state.canvas->setColor(color);
+}
+
+LayoutText::LayoutText()
+    : LayoutContainer(LayoutId::Text)
+{
+}
+
+void LayoutText::render(RenderState& state) const
+{
+    std::cout << "APPLY LAYOUT TEXT" << std::endl;
+    state.canvas->text(x, y, text);
+    
+    /*RenderState newState(this, RenderMode::Display);
+    newState.canvas = Canvas::create(state.canvas->box());
+    //newState.canvas->
+    renderChildren(newState);*/
 }
 
 void FillData::fill(RenderState& state, const Path& path) const
